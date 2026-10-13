@@ -41,6 +41,16 @@ button:disabled{opacity:.5}
 <button id="logout" hidden>Wyloguj się</button>
 
 <div id="status">Łączenie z serwerem…</div>
+
+<section id="chat" hidden>
+  <h2>💬 Czat ekipy</h2>
+  <div id="messages" style="height:300px;overflow-y:auto;background:#111214;padding:12px;border-radius:10px"></div>
+
+  <form id="sendForm">
+    <input id="messageInput" maxlength="2000" placeholder="Napisz wiadomość..." required>
+    <button type="submit">Wyślij ➤</button>
+  </form>
+</section>
 </section>
 </main>
 
