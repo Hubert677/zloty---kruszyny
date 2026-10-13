@@ -1,1 +1,164 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zloty.kruszyny</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111214;color:#f2f3f5;font-family:Arial,sans-serif}
+header{padding:20px;background:#18191c;border-bottom:1px solid #303136}
+h1{margin:0;color:#a78bfa;font-size:25px}
+main{max-width:500px;margin:35px auto;padding:20px}
+.panel{background:#1b1c20;padding:22px;border-radius:15px}
+input,button{width:100%;padding:13px;margin-top:10px;border-radius:8px;border:1px solid #3b3d45;font-size:15px}
+input{background:#111214;color:white}
+button{background:#8b5cf6;color:white;border:0;font-weight:bold}
+button:disabled{opacity:.5}
+.muted{color:#a7a9b2;font-size:14px;line-height:1.5}
+#status{white-space:pre-wrap;margin-top:15px;font-size:14px}
+</style>
+</head>
+<body>
+<header><h1>zloty.kruszyny</h1></header>
+<main>
+<section class="panel">
+<h2>Witaj na czacie 👋</h2>
+<p class="muted">Prywatne miejsce dla naszej ekipy.</p>
 
+<label for="nickname">Nick</label>
+<input id="nickname" maxlength="30" placeholder="Twój nick">
+
+<label for="email">E-mail</label>
+<input id="email" type="email" autocomplete="email" placeholder="Adres e-mail">
+
+<label for="password">Hasło</label>
+<input id="password" type="password" autocomplete="current-password" placeholder="Hasło (minimum 6 znaków)">
+
+<button id="signup">Utwórz konto</button>
+<button id="login">Zaloguj się</button>
+<button id="join">Dołącz z zaproszenia</button>
+<button id="logout" hidden>Wyloguj się</button>
+
+<div id="status">Łączenie z serwerem…</div>
+</section>
+</main>
+
+<script type="module">
+import { createClient } from
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'sb_publishable_cTv74cTj0cZrfGHYBe8PkQ_wf1OBSHi';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const status = message => $('status').textContent = message;
+
+function getInviteCode(){
+  return new URLSearchParams(location.search).get('invite')
+    || location.hash.slice(1).replace(/^invite=/,'')
+    || '';
+}
+
+async function refresh(){
+  const {data:{session}} = await supabase.auth.getSession();
+  $('logout').hidden = !session;
+  $('signup').hidden = !!session;
+  $('login').hidden = !!session;
+
+  if(!session){
+    status('Zaloguj się lub utwórz konto. Do czatu potrzebujesz zaproszenia.');
+    return;
+  }
+
+  const {data:member,error} = await supabase
+    .from('chat_members')
+    .select('user_id')
+    .eq('user_id',session.user.id)
+    .maybeSingle();
+
+  if(error){
+    status('Nie udało się sprawdzić członkostwa: '+error.message);
+    return;
+  }
+
+  if(member){
+    status('Jesteś członkiem zloty.kruszyny! Następny etap to uruchomienie wiadomości.');
+  }else{
+    status('Nie należysz jeszcze do czatu. Otwórz link zaproszeniowy i kliknij „Dołącz z zaproszenia”.');
+  }
+}
+
+$('signup').onclick = async () => {
+  const email = $('email').value.trim();
+  const password = $('password').value;
+  const nickname = $('nickname').value.trim() || 'Użytkownik';
+
+  if(!email || password.length < 6){
+    status('Wpisz e-mail i hasło mające co najmniej 6 znaków.');
+    return;
+  }
+
+  status('Tworzenie konta…');
+  const {data,error} = await supabase.auth.signUp({
+    email,password,options:{data:{nickname}}
+  });
+
+  if(error){status('Błąd: '+error.message);return;}
+  if(!data.session){
+    status('Konto utworzone! Sprawdź e-mail, aby potwierdzić konto, a następnie się zaloguj.');
+  }else{
+    status('Konto utworzone!');
+  }
+  await refresh();
+};
+
+$('login').onclick = async () => {
+  status('Logowanie…');
+  const {error} = await supabase.auth.signInWithPassword({
+    email:$('email').value.trim(),
+    password:$('password').value
+  });
+  if(error){status('Błąd logowania: '+error.message);return;}
+  await refresh();
+};
+
+$('join').onclick = async () => {
+  const {data:{session}} = await supabase.auth.getSession();
+  if(!session){
+    status('Najpierw utwórz konto lub zaloguj się.');
+    return;
+  }
+
+  const code = getInviteCode();
+  if(!code){
+    status('Brak kodu zaproszenia w linku. Otwórz link otrzymany od znajomego.');
+    return;
+  }
+
+  status('Sprawdzanie zaproszenia…');
+  const {data,error} = await supabase.rpc('redeem_chat_invite',{
+    invite_code:code
+  });
+
+  if(error){status('Nie udało się wykorzystać zaproszenia: '+error.message);return;}
+  if(data !== true){
+    status('Zaproszenie jest nieprawidłowe, wygasło lub wykorzystano limit.');
+    return;
+  }
+
+  status('Dołączono do czatu! 🎉');
+  await refresh();
+};
+
+$('logout').onclick = async () => {
+  await supabase.auth.signOut();
+  status('Wylogowano.');
+  await refresh();
+};
+
+supabase.auth.onAuthStateChange(() => refresh());
+await refresh();
+</script>
+</body>
+</html>
