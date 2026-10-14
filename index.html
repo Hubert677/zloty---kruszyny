@@ -1,102 +1,217 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>zloty.kruszyny</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#111214;color:#f2f3f5;font-family:Arial,sans-serif}
-header{padding:20px;background:#18191c;border-bottom:1px solid #303136}
-h1{margin:0;color:#a78bfa;font-size:25px}
-main{max-width:500px;margin:35px auto;padding:20px}
-.panel{background:#1b1c20;padding:22px;border-radius:15px}
-input,button{width:100%;padding:13px;margin-top:10px;border-radius:8px;border:1px solid #3b3d45;font-size:15px}
-input{background:#111214;color:white}
-button{background:#8b5cf6;color:white;border:0;font-weight:bold}
-button:disabled{opacity:.5}
-.muted{color:#a7a9b2;font-size:14px;line-height:1.5}
-#status{white-space:pre-wrap;margin-top:15px;font-size:14px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zloty.kruszyny — Czat</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px;
+      background: #10131c;
+      color: #f5f6fa;
+      font-family: Arial, sans-serif;
+    }
+    main { max-width: 650px; margin: auto; }
+    h1 { color: #8b9cff; }
+    .panel {
+      background: #1b2030;
+      padding: 16px;
+      border-radius: 14px;
+      margin: 14px 0;
+    }
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin: 6px 0;
+      border-radius: 9px;
+      border: 1px solid #454c60;
+      font-size: 16px;
+    }
+    input { background: #111521; color: white; }
+    button {
+      background: #687cff;
+      color: white;
+      border: 0;
+      font-weight: bold;
+    }
+    #messages {
+      height: 320px;
+      overflow-y: auto;
+      background: #111521;
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .message {
+      padding: 9px;
+      margin: 7px 0;
+      background: #252c40;
+      border-radius: 9px;
+      overflow-wrap: anywhere;
+    }
+    .muted { color: #b4bdd2; font-size: 13px; }
+    #chat { display: none; }
+  </style>
 </head>
 <body>
-<header><h1>zloty.kruszyny</h1></header>
 <main>
-<section class="panel">
-<h2>Witaj na czacie 👋</h2>
-<p class="muted">Prywatne miejsce dla naszej ekipy.</p>
+  <h1>zloty.kruszyny 💬</h1>
+  <p class="muted">Prywatny czat dla członków.</p>
 
-<label for="nickname">Nick</label>
-<input id="nickname" maxlength="30" placeholder="Twój nick">
+  <div class="panel">
+    <label for="nickname">Nick</label>
+    <input id="nickname" placeholder="Twój nick" maxlength="40">
 
-<label for="email">E-mail</label>
-<input id="email" type="email" autocomplete="email" placeholder="Adres e-mail">
+    <label for="email">E-mail</label>
+    <input id="email" type="email" placeholder="E-mail">
 
-<label for="password">Hasło</label>
-<input id="password" type="password" autocomplete="current-password" placeholder="Hasło (minimum 6 znaków)">
+    <label for="password">Hasło</label>
+    <input id="password" type="password"
+           placeholder="Minimum 6 znaków">
 
-<button id="signup">Utwórz konto</button>
-<button id="login">Zaloguj się</button>
-<button id="join">Dołącz z zaproszenia</button>
-<button id="logout" hidden>Wyloguj się</button>
+    <button id="signup">Utwórz konto</button>
+    <button id="login">Zaloguj się</button>
+    <button id="join" hidden>Dołącz z zaproszenia</button>
+    <button id="logout" hidden>Wyloguj się</button>
+  </div>
 
-<div id="status">Łączenie z serwerem…</div>
+  <div class="panel">
+    <strong>Status</strong>
+    <p id="status">Łączenie z serwerem...</p>
+  </div>
 
-<section id="chat" hidden>
-  <h2>💬 Czat ekipy</h2>
-  <div id="messages" style="height:300px;overflow-y:auto;background:#111214;padding:12px;border-radius:10px"></div>
-
-  <form id="sendForm">
-    <input id="messageInput" maxlength="2000" placeholder="Napisz wiadomość..." required>
-    <button type="submit">Wyślij ➤</button>
-  </form>
-</section>
-</section>
+  <section id="chat" class="panel">
+    <h2>Wiadomości</h2>
+    <div id="messages"></div>
+    <form id="sendForm">
+      <input id="messageInput" maxlength="2000"
+             placeholder="Napisz wiadomość..." required>
+      <button type="submit">Wyślij wiadomość</button>
+    </form>
+  </section>
 </main>
 
-<script type="module">
-import { createClient } from
-'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+<script>
+const SUPABASE_URL = 'https://sxlftsumkwmwuuvclgrk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_cTv74cTj0cZrfGHYBe8PkQ_wf1OBSHi';
 
-const SUPABASE_URL = 'sb_publishable_cTv74cTj0cZrfGHYBe8PkQ_wf1OBSHi';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
-const status = message => $('status').textContent = message;
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function getInviteCode(){
-  return new URLSearchParams(location.search).get('invite')
-    || location.hash.slice(1).replace(/^invite=/,'')
-    || '';
+let currentUser = null;
+let isMember = false;
+let channel = null;
+
+function status(text) {
+  $('status').textContent = text;
 }
 
-async function refresh(){
-  const {data:{session}} = await supabase.auth.getSession();
-  $('logout').hidden = !session;
-  $('signup').hidden = !!session;
-  $('login').hidden = !!session;
+function getInviteCode() {
+  const params = new URLSearchParams(location.search);
+  return params.get('invite') || '';
+}
 
-  if(!session){
-    status('Zaloguj się lub utwórz konto. Do czatu potrzebujesz zaproszenia.');
+function showMessage(msg) {
+  const item = document.createElement('div');
+  item.className = 'message';
+
+  const name = document.createElement('strong');
+  name.textContent = msg.username || 'Użytkownik';
+
+  const content = document.createElement('div');
+  content.textContent = msg.content;
+
+  const time = document.createElement('div');
+  time.className = 'muted';
+  time.textContent = msg.created_at
+    ? new Date(msg.created_at).toLocaleString('pl-PL')
+    : '';
+
+  item.append(name, content, time);
+  $('messages').appendChild(item);
+}
+
+async function refresh() {
+  const { data, error } = await db.auth.getSession();
+  if (error) {
+    status('Błąd sesji: ' + error.message);
     return;
   }
 
-  const {data:member,error} = await supabase
+  currentUser = data.session?.user || null;
+  $('signup').hidden = !!currentUser;
+  $('login').hidden = !!currentUser;
+  $('logout').hidden = !currentUser;
+  $('join').hidden = true;
+  $('chat').style.display = 'none';
+
+  if (channel) {
+    await db.removeChannel(channel);
+    channel = null;
+  }
+
+  if (!currentUser) {
+    isMember = false;
+    status('Zaloguj się lub utwórz konto.');
+    return;
+  }
+
+  const { data: member, error: memberError } = await db
     .from('chat_members')
     .select('user_id')
-    .eq('user_id',session.user.id)
+    .eq('user_id', currentUser.id)
     .maybeSingle();
 
-  if(error){
-    status('Nie udało się sprawdzić członkostwa: '+error.message);
+  if (memberError) {
+    status('Błąd członkostwa: ' + memberError.message);
     return;
   }
 
-  if(member){
-    status('Jesteś członkiem zloty.kruszyny! Następny etap to uruchomienie wiadomości.');
-  }else{
-    status('Nie należysz jeszcze do czatu. Otwórz link zaproszeniowy i kliknij „Dołącz z zaproszenia”.');
+  if (!member) {
+    isMember = false;
+    $('join').hidden = false;
+    status('Nie należysz jeszcze do czatu. Użyj zaproszenia.');
+    return;
   }
+
+  isMember = true;
+  $('chat').style.display = 'block';
+  status('Jesteś członkiem zloty.kruszyny!');
+
+  await loadMessages();
+
+  channel = db.channel('chat-messages')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages'
+    }, payload => {
+      if (payload.new) {
+        showMessage(payload.new);
+        $('messages').scrollTop = $('messages').scrollHeight;
+      }
+    })
+    .subscribe();
+}
+
+async function loadMessages() {
+  const { data, error } = await db
+    .from('messages')
+    .select('*')
+    .order('created_at', { ascending: true })
+    .limit(200);
+
+  if (error) {
+    status('Błąd wiadomości: ' + error.message);
+    return;
+  }
+
+  $('messages').replaceChildren();
+  (data || []).forEach(showMessage);
+  $('messages').scrollTop = $('messages').scrollHeight;
 }
 
 $('signup').onclick = async () => {
@@ -104,71 +219,121 @@ $('signup').onclick = async () => {
   const password = $('password').value;
   const nickname = $('nickname').value.trim() || 'Użytkownik';
 
-  if(!email || password.length < 6){
+  if (!email || password.length < 6) {
     status('Wpisz e-mail i hasło mające co najmniej 6 znaków.');
     return;
   }
 
-  status('Tworzenie konta…');
-  const {data,error} = await supabase.auth.signUp({
-    email,password,options:{data:{nickname}}
+  status('Tworzenie konta...');
+
+  const { data, error } = await db.auth.signUp({
+    email,
+    password,
+    options: { data: { nickname } }
   });
 
-  if(error){status('Błąd: '+error.message);return;}
-  if(!data.session){
-    status('Konto utworzone! Sprawdź e-mail, aby potwierdzić konto, a następnie się zaloguj.');
-  }else{
-    status('Konto utworzone!');
+  if (error) {
+    status('Błąd rejestracji: ' + error.message);
+    return;
   }
-  await refresh();
+
+  if (!data.session) {
+    status('Konto utworzone! Potwierdź e-mail, a potem się zaloguj.');
+  } else {
+    status('Konto utworzone!');
+    await refresh();
+  }
 };
 
 $('login').onclick = async () => {
-  status('Logowanie…');
-  const {error} = await supabase.auth.signInWithPassword({
-    email:$('email').value.trim(),
-    password:$('password').value
-  });
-  if(error){status('Błąd logowania: '+error.message);return;}
-  await refresh();
-};
+  status('Logowanie...');
 
-$('join').onclick = async () => {
-  const {data:{session}} = await supabase.auth.getSession();
-  if(!session){
-    status('Najpierw utwórz konto lub zaloguj się.');
-    return;
-  }
-
-  const code = getInviteCode();
-  if(!code){
-    status('Brak kodu zaproszenia w linku. Otwórz link otrzymany od znajomego.');
-    return;
-  }
-
-  status('Sprawdzanie zaproszenia…');
-  const {data,error} = await supabase.rpc('redeem_chat_invite',{
-    invite_code:code
+  const { error } = await db.auth.signInWithPassword({
+    email: $('email').value.trim(),
+    password: $('password').value
   });
 
-  if(error){status('Nie udało się wykorzystać zaproszenia: '+error.message);return;}
-  if(data !== true){
-    status('Zaproszenie jest nieprawidłowe, wygasło lub wykorzystano limit.');
+  if (error) {
+    status('Błąd logowania: ' + error.message);
     return;
   }
 
-  status('Dołączono do czatu! 🎉');
   await refresh();
 };
 
 $('logout').onclick = async () => {
-  await supabase.auth.signOut();
-  status('Wylogowano.');
+  const { error } = await db.auth.signOut();
+  if (error) {
+    status('Błąd wylogowania: ' + error.message);
+    return;
+  }
   await refresh();
 };
 
-supabase.auth.onAuthStateChange(() => refresh());
-await refresh();
+$('join').onclick = async () => {
+  if (!currentUser) {
+    status('Najpierw się zaloguj.');
+    return;
+  }
+
+  const code = getInviteCode();
+  if (!code) {
+    status('Brak kodu zaproszenia w adresie strony (?invite=KOD).');
+    return;
+  }
+
+  status('Sprawdzanie zaproszenia...');
+
+  const { data, error } = await db.rpc('redeem_chat_invite', {
+    invite_code: code
+  });
+
+  if (error) {
+    status('Błąd zaproszenia: ' + error.message);
+    return;
+  }
+
+  if (data !== true) {
+    status('Zaproszenie nieprawidłowe lub wygasło.');
+    return;
+  }
+
+  status('Dołączono do czatu!');
+  await refresh();
+};
+
+$('sendForm').onsubmit = async event => {
+  event.preventDefault();
+
+  const content = $('messageInput').value.trim();
+  if (!content || !currentUser || !isMember) return;
+
+  const username = (
+    currentUser.user_metadata?.nickname ||
+    currentUser.email?.split('@')[0] ||
+    'Użytkownik'
+  ).slice(0, 40);
+
+  const { error } = await db.from('messages').insert({
+    user_id: currentUser.id,
+    username,
+    content
+  });
+
+  if (error) {
+    status('Błąd wysyłania: ' + error.message);
+    return;
+  }
+
+  $('messageInput').value = '';
+  status('Wiadomość wysłana!');
+};
+
+db.auth.onAuthStateChange(() => {
+  setTimeout(refresh, 0);
+});
+
+refresh();
 </script>
 </body>
 </html>
